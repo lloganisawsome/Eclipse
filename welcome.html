@@ -1,0 +1,1545 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Welcome to Eclipse Browser</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap');
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg: #080e14;
+      --surface: #0d1520;
+      --surface2: #111d2b;
+      --cyan: #5ce0d8;
+      --cyan-glow: rgba(92, 224, 216, 0.15);
+      --blue: #7ab8f5;
+      --text: #e8f4f8;
+      --muted: #7a9ab0;
+      --border: rgba(92, 224, 216, 0.12);
+    }
+
+    html { scroll-behavior: smooth; }
+
+    body {
+      font-family: 'Inter', sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      overflow-x: hidden;
+    }
+
+    #bg-canvas {
+      position: fixed;
+      inset: 0;
+      z-index: 0;
+      pointer-events: none;
+    }
+
+    /* ── PROGRESS BAR (top) ── */
+    .progress-bar {
+      position: fixed;
+      top: 0; left: 0;
+      height: 2px;
+      background: linear-gradient(90deg, var(--cyan), var(--blue));
+      z-index: 200;
+      width: 0%;
+      transition: width 0.1s linear;
+      box-shadow: 0 0 10px var(--cyan);
+    }
+
+    /* ── NAV ── */
+    nav {
+      position: fixed;
+      top: 2px; left: 0; right: 0;
+      z-index: 100;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 16px 48px;
+      background: rgba(8, 14, 20, 0.85);
+      backdrop-filter: blur(20px);
+      border-bottom: 1px solid var(--border);
+    }
+
+    .nav-logo {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .nav-logo img {
+      width: 30px; height: 30px;
+      border-radius: 8px;
+    }
+
+    .nav-logo span {
+      font-size: 16px;
+      font-weight: 700;
+      color: var(--text);
+    }
+
+    .nav-steps {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .step-dot {
+      width: 8px; height: 8px;
+      border-radius: 50%;
+      background: rgba(92, 224, 216, 0.2);
+      border: 1px solid var(--border);
+      cursor: pointer;
+      transition: all 0.3s;
+    }
+
+    .step-dot.active {
+      background: var(--cyan);
+      box-shadow: 0 0 10px rgba(92, 224, 216, 0.5);
+      transform: scale(1.2);
+    }
+
+    .step-dot.done {
+      background: rgba(92, 224, 216, 0.4);
+    }
+
+    .nav-skip {
+      font-size: 13px;
+      color: var(--muted);
+      cursor: pointer;
+      padding: 6px 14px;
+      border-radius: 8px;
+      border: 1px solid var(--border);
+      background: transparent;
+      transition: all 0.2s;
+      font-family: inherit;
+    }
+
+    .nav-skip:hover { color: var(--text); border-color: rgba(92, 224, 216, 0.3); }
+
+    /* ── SLIDES WRAPPER ── */
+    .slides {
+      position: relative;
+      z-index: 1;
+    }
+
+    /* ── SLIDE BASE ── */
+    .slide {
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 100px 24px 80px;
+      opacity: 0;
+      transform: translateY(40px);
+      transition: opacity 0.7s ease, transform 0.7s ease;
+    }
+
+    .slide.visible {
+      opacity: 1;
+      transform: translateY(0);
+    }
+
+    .slide-inner {
+      max-width: 860px;
+      width: 100%;
+      margin: 0 auto;
+    }
+
+    /* ── HERO SLIDE ── */
+    .hero-slide {
+      text-align: center;
+      flex-direction: column;
+    }
+
+    .hero-slide .slide-inner {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+
+    .welcome-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      background: rgba(92, 224, 216, 0.08);
+      border: 1px solid var(--border);
+      border-radius: 100px;
+      padding: 6px 18px;
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--cyan);
+      margin-bottom: 32px;
+    }
+
+    .welcome-badge svg { width: 14px; height: 14px; stroke: var(--cyan); fill: none; }
+
+    .hero-logo {
+      position: relative;
+      margin-bottom: 40px;
+    }
+
+    .hero-logo img {
+      width: 120px; height: 120px;
+      border-radius: 28px;
+      animation: float 6s ease-in-out infinite;
+      filter: drop-shadow(0 0 36px rgba(92, 224, 216, 0.4));
+    }
+
+    .logo-pulse {
+      position: absolute;
+      inset: -16px;
+      border-radius: 50%;
+      border: 1px solid rgba(92, 224, 216, 0.2);
+      animation: pulse-ring 3s ease-in-out infinite;
+    }
+
+    .logo-pulse2 {
+      position: absolute;
+      inset: -32px;
+      border-radius: 50%;
+      border: 1px solid rgba(92, 224, 216, 0.1);
+      animation: pulse-ring 3s 1.2s ease-in-out infinite;
+    }
+
+    .hero-slide h1 {
+      font-size: clamp(44px, 7vw, 80px);
+      font-weight: 900;
+      letter-spacing: -3px;
+      line-height: 1.0;
+      margin-bottom: 20px;
+    }
+
+    .hero-slide h1 .grad {
+      background: linear-gradient(135deg, #5ce0d8 0%, #7ab8f5 50%, #a78bfa 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    .hero-slide .sub {
+      font-size: 18px;
+      color: var(--muted);
+      line-height: 1.7;
+      max-width: 500px;
+      margin-bottom: 52px;
+    }
+
+    .hero-stats {
+      display: flex;
+      gap: 48px;
+      flex-wrap: wrap;
+      justify-content: center;
+      margin-bottom: 52px;
+    }
+
+    .h-stat { text-align: center; }
+
+    .h-stat-num {
+      font-size: 36px;
+      font-weight: 900;
+      background: linear-gradient(135deg, var(--cyan), var(--blue));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      letter-spacing: -1.5px;
+    }
+
+    .h-stat-label {
+      font-size: 12px;
+      color: var(--muted);
+      font-weight: 500;
+      margin-top: 2px;
+    }
+
+    .next-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      background: var(--cyan);
+      color: #050d12;
+      padding: 16px 36px;
+      border-radius: 14px;
+      font-size: 15px;
+      font-weight: 800;
+      border: none;
+      cursor: pointer;
+      font-family: inherit;
+      transition: all 0.25s;
+      box-shadow: 0 0 40px rgba(92, 224, 216, 0.35);
+    }
+
+    .next-btn:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 0 60px rgba(92, 224, 216, 0.55);
+    }
+
+    .next-btn svg { width: 16px; height: 16px; stroke: currentColor; fill: none; }
+
+    /* ── FEATURE SLIDE ── */
+    .feature-slide {}
+
+    .feat-label {
+      font-size: 11px;
+      font-weight: 800;
+      letter-spacing: 2.5px;
+      text-transform: uppercase;
+      color: var(--cyan);
+      margin-bottom: 14px;
+    }
+
+    .feat-num {
+      font-size: 11px;
+      font-weight: 700;
+      color: var(--muted);
+      letter-spacing: 1px;
+      margin-bottom: 14px;
+    }
+
+    .feat-slide-title {
+      font-size: clamp(32px, 5vw, 56px);
+      font-weight: 900;
+      letter-spacing: -2px;
+      line-height: 1.05;
+      margin-bottom: 16px;
+    }
+
+    .feat-slide-sub {
+      font-size: 16px;
+      color: var(--muted);
+      line-height: 1.75;
+      max-width: 480px;
+      margin-bottom: 44px;
+    }
+
+    /* Two-column feature layout */
+    .feat-2col {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 48px;
+      align-items: center;
+    }
+
+    .feat-2col.reverse { direction: rtl; }
+    .feat-2col.reverse > * { direction: ltr; }
+
+    /* Feature cards inside slide */
+    .feat-cards {
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+    }
+
+    .feat-card {
+      display: flex;
+      align-items: flex-start;
+      gap: 14px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 18px 20px;
+      transition: all 0.3s;
+    }
+
+    .feat-card:hover {
+      border-color: rgba(92, 224, 216, 0.3);
+      transform: translateX(4px);
+    }
+
+    .feat-card-icon {
+      flex-shrink: 0;
+      width: 38px; height: 38px;
+      background: var(--cyan-glow);
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .feat-card-icon svg {
+      width: 18px; height: 18px;
+      stroke: var(--cyan);
+      fill: none;
+      stroke-width: 2;
+    }
+
+    .feat-card-body h4 {
+      font-size: 14px;
+      font-weight: 700;
+      margin-bottom: 3px;
+    }
+
+    .feat-card-body p {
+      font-size: 12px;
+      color: var(--muted);
+      line-height: 1.6;
+    }
+
+    /* Visual mockup area */
+    .feat-visual {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    /* Profile cards visual */
+    .profiles-visual {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      width: 100%;
+    }
+
+    .profile-mock {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 14px 18px;
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      transition: all 0.3s;
+      animation: slideInRight 0.5s ease both;
+    }
+
+    .profile-mock:nth-child(2) { animation-delay: 0.1s; }
+    .profile-mock:nth-child(3) { animation-delay: 0.2s; }
+
+    .profile-mock.active-p {
+      border-color: rgba(92, 224, 216, 0.4);
+      box-shadow: 0 0 20px rgba(92, 224, 216, 0.08);
+    }
+
+    .profile-avatar {
+      width: 36px; height: 36px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 14px;
+      font-weight: 800;
+      flex-shrink: 0;
+    }
+
+    .profile-info { flex: 1; }
+    .profile-info h5 { font-size: 13px; font-weight: 700; }
+    .profile-info p { font-size: 11px; color: var(--muted); margin-top: 2px; }
+
+    .profile-badge {
+      font-size: 10px;
+      font-weight: 700;
+      padding: 3px 9px;
+      border-radius: 6px;
+      background: rgba(92, 224, 216, 0.12);
+      color: var(--cyan);
+    }
+
+    /* Tabs visual */
+    .tabs-visual {
+      width: 100%;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      overflow: hidden;
+    }
+
+    .tabs-bar {
+      background: rgba(0,0,0,0.3);
+      padding: 8px 10px;
+      display: flex;
+      gap: 6px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .tab-mock {
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 6px 12px;
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--muted);
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      white-space: nowrap;
+    }
+
+    .tab-mock.active-tab {
+      background: rgba(92, 224, 216, 0.1);
+      border-color: rgba(92, 224, 216, 0.3);
+      color: var(--text);
+    }
+
+    .tab-favicon {
+      width: 10px; height: 10px;
+      border-radius: 2px;
+    }
+
+    .tabs-url {
+      padding: 10px 14px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .url-bar-mock {
+      flex: 1;
+      background: rgba(0,0,0,0.3);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 6px 12px;
+      font-size: 11px;
+      color: var(--cyan);
+      font-family: 'Courier New', monospace;
+    }
+
+    .tabs-content {
+      padding: 20px;
+      min-height: 120px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .content-placeholder {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      width: 100%;
+    }
+
+    .ph-line {
+      height: 8px;
+      border-radius: 4px;
+      background: rgba(255,255,255,0.05);
+      animation: shimmer 2s ease-in-out infinite;
+    }
+
+    .ph-line:nth-child(1) { width: 80%; animation-delay: 0s; }
+    .ph-line:nth-child(2) { width: 60%; animation-delay: 0.15s; }
+    .ph-line:nth-child(3) { width: 90%; animation-delay: 0.3s; }
+    .ph-line:nth-child(4) { width: 40%; animation-delay: 0.45s; }
+
+    /* Privacy visual */
+    .privacy-visual {
+      position: relative;
+      width: 260px;
+      height: 260px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin: 0 auto;
+    }
+
+    .priv-orbit {
+      position: absolute;
+      border-radius: 50%;
+      border: 1px solid rgba(92,224,216,0.15);
+    }
+
+    .priv-orbit:nth-child(1) { inset: 0; animation: spin 20s linear infinite; }
+    .priv-orbit:nth-child(2) { inset: 28px; animation: spin 14s linear infinite reverse; }
+    .priv-orbit:nth-child(3) { inset: 56px; animation: spin 9s linear infinite; }
+
+    .priv-dot {
+      position: absolute;
+      width: 7px; height: 7px;
+      border-radius: 50%;
+      top: -3.5px;
+      left: calc(50% - 3.5px);
+    }
+
+    .priv-center svg {
+      width: 64px; height: 64px;
+      stroke: var(--cyan);
+      fill: none;
+      filter: drop-shadow(0 0 18px rgba(92,224,216,0.5));
+    }
+
+    /* Extensions visual */
+    .ext-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+      width: 100%;
+    }
+
+    .ext-tile {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 16px;
+      display: flex;
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 8px;
+      transition: all 0.3s;
+      animation: fadeUp 0.5s ease both;
+    }
+
+    .ext-tile:nth-child(2) { animation-delay: 0.1s; }
+    .ext-tile:nth-child(3) { animation-delay: 0.2s; }
+    .ext-tile:nth-child(4) { animation-delay: 0.3s; }
+
+    .ext-tile:hover {
+      border-color: rgba(92, 224, 216, 0.3);
+      transform: translateY(-2px);
+    }
+
+    .ext-icon {
+      width: 34px; height: 34px;
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .ext-icon svg { width: 16px; height: 16px; stroke-width: 2; fill: none; }
+
+    .ext-tile h5 { font-size: 12px; font-weight: 700; }
+    .ext-tile p { font-size: 11px; color: var(--muted); line-height: 1.5; }
+
+    /* Themes visual */
+    .themes-visual {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      width: 100%;
+    }
+
+    .theme-row-vis {
+      display: flex;
+      gap: 8px;
+    }
+
+    .t-swatch {
+      flex: 1;
+      height: 44px;
+      border-radius: 10px;
+      border: 2px solid transparent;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .t-swatch:hover { transform: scale(1.04); }
+    .t-swatch.sel { border-color: var(--cyan); box-shadow: 0 0 14px rgba(92,224,216,0.35); }
+
+    /* Password visual */
+    .pass-visual {
+      width: 100%;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      overflow: hidden;
+    }
+
+    .pass-header {
+      background: rgba(0,0,0,0.3);
+      padding: 14px 18px;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .pass-header svg { width: 16px; height: 16px; stroke: var(--cyan); fill: none; }
+    .pass-header span { font-size: 13px; font-weight: 700; color: var(--cyan); }
+
+    .pass-item {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 12px 18px;
+      border-bottom: 1px solid var(--border);
+      font-size: 12px;
+      transition: background 0.2s;
+    }
+
+    .pass-item:hover { background: rgba(255,255,255,0.02); }
+    .pass-item:last-child { border-bottom: none; }
+
+    .pass-site { font-weight: 600; }
+    .pass-dots { color: var(--muted); letter-spacing: 2px; }
+    .pass-copy {
+      width: 26px; height: 26px;
+      border-radius: 6px;
+      background: rgba(92,224,216,0.08);
+      border: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+    }
+    .pass-copy svg { width: 12px; height: 12px; stroke: var(--cyan); fill: none; }
+
+    /* Mini-app floating visual */
+    .miniapp-visual {
+      position: relative;
+      width: 100%;
+      height: 280px;
+    }
+
+    .mini-window {
+      position: absolute;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      overflow: hidden;
+      box-shadow: 0 16px 48px rgba(0,0,0,0.5);
+      transition: all 0.3s;
+    }
+
+    .mini-window:hover { transform: scale(1.02); z-index: 10; }
+
+    .mini-win-1 { width: 180px; top: 10px; left: 0; animation: float 5s ease-in-out infinite; }
+    .mini-win-2 { width: 160px; top: 60px; right: 10px; animation: float 6s 1s ease-in-out infinite; }
+    .mini-win-3 { width: 140px; bottom: 0; left: 60px; animation: float 7s 0.5s ease-in-out infinite; }
+
+    .mini-titlebar {
+      background: rgba(0,0,0,0.4);
+      padding: 8px 10px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .mini-dot { width: 7px; height: 7px; border-radius: 50%; }
+
+    .mini-title {
+      font-size: 10px;
+      font-weight: 600;
+      color: var(--muted);
+      margin-left: 4px;
+    }
+
+    .mini-body {
+      padding: 10px;
+    }
+
+    .mini-line {
+      height: 6px;
+      border-radius: 3px;
+      background: rgba(255,255,255,0.06);
+      margin-bottom: 6px;
+    }
+
+    .mini-line:last-child { margin-bottom: 0; width: 60%; }
+
+    /* FINAL SLIDE */
+    .final-slide {
+      text-align: center;
+    }
+
+    .final-slide .slide-inner {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+
+    .final-slide h2 {
+      font-size: clamp(36px, 6vw, 64px);
+      font-weight: 900;
+      letter-spacing: -2.5px;
+      margin-bottom: 16px;
+      line-height: 1.05;
+    }
+
+    .final-slide p {
+      font-size: 17px;
+      color: var(--muted);
+      line-height: 1.7;
+      max-width: 480px;
+      margin-bottom: 48px;
+    }
+
+    .final-checklist {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      text-align: left;
+      margin-bottom: 52px;
+      width: 100%;
+      max-width: 440px;
+    }
+
+    .chk-item {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 12px 16px;
+      font-size: 14px;
+      font-weight: 600;
+      animation: slideInRight 0.4s ease both;
+    }
+
+    .chk-item:nth-child(2) { animation-delay: 0.08s; }
+    .chk-item:nth-child(3) { animation-delay: 0.16s; }
+    .chk-item:nth-child(4) { animation-delay: 0.24s; }
+    .chk-item:nth-child(5) { animation-delay: 0.32s; }
+    .chk-item:nth-child(6) { animation-delay: 0.40s; }
+
+    .chk-icon {
+      width: 28px; height: 28px;
+      border-radius: 8px;
+      background: rgba(92, 224, 216, 0.1);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+    }
+
+    .chk-icon svg { width: 14px; height: 14px; stroke: var(--cyan); fill: none; stroke-width: 2.5; }
+
+    .launch-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 12px;
+      background: linear-gradient(135deg, var(--cyan), var(--blue));
+      color: #050d12;
+      padding: 18px 44px;
+      border-radius: 16px;
+      font-size: 16px;
+      font-weight: 800;
+      border: none;
+      cursor: pointer;
+      font-family: inherit;
+      transition: all 0.3s;
+      box-shadow: 0 0 50px rgba(92, 224, 216, 0.4);
+      text-decoration: none;
+    }
+
+    .launch-btn:hover {
+      transform: translateY(-3px);
+      box-shadow: 0 0 70px rgba(92, 224, 216, 0.6);
+    }
+
+    .launch-btn svg { width: 18px; height: 18px; stroke: currentColor; fill: none; }
+
+    /* SECTION DIVIDER */
+    .slide-divider {
+      position: relative;
+      z-index: 1;
+      height: 1px;
+      background: var(--border);
+      margin: 0 48px;
+    }
+
+    /* KEYBOARD HINT */
+    .kbd-hint {
+      position: fixed;
+      bottom: 28px;
+      left: 50%;
+      transform: translateX(-50%);
+      z-index: 100;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 12px;
+      color: var(--muted);
+      background: rgba(13, 21, 32, 0.9);
+      border: 1px solid var(--border);
+      padding: 8px 16px;
+      border-radius: 100px;
+      backdrop-filter: blur(10px);
+      opacity: 0;
+      transition: opacity 0.4s;
+    }
+
+    .kbd-hint.show { opacity: 1; }
+
+    .kbd {
+      background: var(--surface2);
+      border: 1px solid rgba(255,255,255,0.1);
+      border-radius: 4px;
+      padding: 2px 7px;
+      font-size: 11px;
+      font-weight: 700;
+      color: var(--text);
+    }
+
+    /* ── ANIMATIONS ── */
+    @keyframes float {
+      0%, 100% { transform: translateY(0); }
+      50%       { transform: translateY(-12px); }
+    }
+
+    @keyframes pulse-ring {
+      0%, 100% { opacity: 0.4; transform: scale(1); }
+      50%       { opacity: 0.15; transform: scale(1.06); }
+    }
+
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    @keyframes fadeUp {
+      from { opacity: 0; transform: translateY(20px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+
+    @keyframes slideInRight {
+      from { opacity: 0; transform: translateX(-16px); }
+      to   { opacity: 1; transform: translateX(0); }
+    }
+
+    @keyframes shimmer {
+      0%, 100% { opacity: 0.05; }
+      50%       { opacity: 0.12; }
+    }
+
+    /* RESPONSIVE */
+    @media (max-width: 700px) {
+      nav { padding: 14px 20px; }
+      .feat-2col { grid-template-columns: 1fr; gap: 32px; }
+      .feat-2col.reverse { direction: ltr; }
+      .feat-visual { display: none; }
+      .ext-grid { grid-template-columns: 1fr; }
+      .miniapp-visual { height: 200px; }
+    }
+  </style>
+</head>
+<body>
+
+<div class="progress-bar" id="progressBar"></div>
+<canvas id="bg-canvas"></canvas>
+
+<!-- NAV -->
+<nav>
+  <div class="nav-logo">
+    <img src="https://media.base44.com/images/public/69dd8d8188d19e08262d641d/3b8fd8cb4_icon-1024.png" alt="Eclipse" />
+    <span>Eclipse Browser</span>
+  </div>
+  <div class="nav-steps" id="navSteps"></div>
+  <button class="nav-skip" onclick="goToSlide(7)">Skip intro</button>
+</nav>
+
+<div class="slides" id="slides">
+
+  <!-- ── SLIDE 0: WELCOME ── -->
+  <div class="slide hero-slide" data-slide="0">
+    <div class="slide-inner">
+      <div class="welcome-badge">
+        <svg viewBox="0 0 24 24" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+        Private · Modular · Yours
+      </div>
+      <div class="hero-logo">
+        <div class="logo-pulse2"></div>
+        <div class="logo-pulse"></div>
+        <img src="https://media.base44.com/images/public/69dd8d8188d19e08262d641d/3b8fd8cb4_icon-1024.png" alt="Eclipse Browser" />
+      </div>
+      <h1>Welcome to<br/><span class="grad">Eclipse.</span></h1>
+      <p class="sub">A private, modular desktop browser built for speed and control. Let's walk you through what makes it different.</p>
+      <div class="hero-stats">
+        <div class="h-stat"><div class="h-stat-num">0</div><div class="h-stat-label">Trackers built-in</div></div>
+        <div class="h-stat"><div class="h-stat-num">20+</div><div class="h-stat-label">Themes</div></div>
+        <div class="h-stat"><div class="h-stat-num">100%</div><div class="h-stat-label">Local data</div></div>
+        <div class="h-stat"><div class="h-stat-num">5</div><div class="h-stat-label">Built-in tools</div></div>
+      </div>
+      <button class="next-btn" onclick="nextSlide()">
+        Get started
+        <svg viewBox="0 0 24 24" stroke-width="2.5"><polyline points="9 18 15 12 9 6"/></svg>
+      </button>
+    </div>
+  </div>
+
+  <div class="slide-divider"></div>
+
+  <!-- ── SLIDE 1: PROFILES ── -->
+  <div class="slide feature-slide" data-slide="1">
+    <div class="slide-inner">
+      <div class="feat-2col">
+        <div>
+          <div class="feat-num">01 / 06</div>
+          <div class="feat-label">Profiles</div>
+          <h2 class="feat-slide-title">Your data,<br/>fully separated.</h2>
+          <p class="feat-slide-sub">Eclipse lets you run multiple completely isolated profiles. Work, personal, research — each one gets its own bookmarks, history, extensions, themes, and passwords. Nothing bleeds between them.</p>
+          <div class="feat-cards">
+            <div class="feat-card">
+              <div class="feat-card-icon">
+                <svg viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+              </div>
+              <div class="feat-card-body">
+                <h4>Switch instantly</h4>
+                <p>Select your profile on launch or swap from the toolbar mid-session.</p>
+              </div>
+            </div>
+            <div class="feat-card">
+              <div class="feat-card-icon">
+                <svg viewBox="0 0 24 24"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+              </div>
+              <div class="feat-card-body">
+                <h4>Fully isolated storage</h4>
+                <p>Each profile has its own folder. Delete one without touching another.</p>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="feat-visual">
+          <div class="profiles-visual">
+            <div class="profile-mock active-p">
+              <div class="profile-avatar" style="background:rgba(92,224,216,0.12);color:var(--cyan)">W</div>
+              <div class="profile-info"><h5>Work</h5><p>3 tabs open · 12 bookmarks</p></div>
+              <span class="profile-badge">Active</span>
+            </div>
+            <div class="profile-mock">
+              <div class="profile-avatar" style="background:rgba(122,184,245,0.12);color:var(--blue)">P</div>
+              <div class="profile-info"><h5>Personal</h5><p>Last used 2h ago</p></div>
+            </div>
+            <div class="profile-mock">
+              <div class="profile-avatar" style="background:rgba(167,139,250,0.12);color:#a78bfa">R</div>
+              <div class="profile-info"><h5>Research</h5><p>Last used yesterday</p></div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div style="margin-top:48px;">
+        <button class="next-btn" onclick="nextSlide()">
+          Next: Tabs
+          <svg viewBox="0 0 24 24" stroke-width="2.5"><polyline points="9 18 15 12 9 6"/></svg>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <div class="slide-divider"></div>
+
+  <!-- ── SLIDE 2: TABS ── -->
+  <div class="slide feature-slide" data-slide="2">
+    <div class="slide-inner">
+      <div class="feat-2col reverse">
+        <div>
+          <div class="feat-num">02 / 06</div>
+          <div class="feat-label">Tabs</div>
+          <h2 class="feat-slide-title">Tabs that stay<br/>where you left them.</h2>
+          <p class="feat-slide-sub">Full multi-tab browsing with per-tab memory. Tabs persist across restarts, switch without reloading, and show the real favicon of every site you visit.</p>
+          <div class="feat-cards">
+            <div class="feat-card">
+              <div class="feat-card-icon">
+                <svg viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="3"/><path d="M3 9h18"/></svg>
+              </div>
+              <div class="feat-card-body">
+                <h4>Instant switching</h4>
+                <p>Tabs are kept in memory — switching is always instant, no reload.</p>
+              </div>
+            </div>
+            <div class="feat-card">
+              <div class="feat-card-icon">
+                <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2"/></svg>
+              </div>
+              <div class="feat-card-body">
+                <h4>Real favicons</h4>
+                <p>Favicons are fetched automatically and cached locally per profile.</p>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="feat-visual">
+          <div class="tabs-visual">
+            <div class="tabs-bar">
+              <div class="tab-mock active-tab">
+                <div class="tab-favicon" style="background:var(--cyan);border-radius:50%"></div>
+                Eclipse — New Tab
+              </div>
+              <div class="tab-mock">
+                <div class="tab-favicon" style="background:#e44d26"></div>
+                GitHub
+              </div>
+              <div class="tab-mock">
+                <div class="tab-favicon" style="background:#1877f2"></div>
+                Notion
+              </div>
+            </div>
+            <div class="tabs-url">
+              <div class="url-bar-mock">eclipse://newtab</div>
+            </div>
+            <div class="tabs-content">
+              <div class="content-placeholder">
+                <div class="ph-line"></div>
+                <div class="ph-line"></div>
+                <div class="ph-line"></div>
+                <div class="ph-line"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div style="margin-top:48px;">
+        <button class="next-btn" onclick="nextSlide()">
+          Next: Privacy
+          <svg viewBox="0 0 24 24" stroke-width="2.5"><polyline points="9 18 15 12 9 6"/></svg>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <div class="slide-divider"></div>
+
+  <!-- ── SLIDE 3: PRIVACY ── -->
+  <div class="slide feature-slide" data-slide="3">
+    <div class="slide-inner">
+      <div class="feat-2col">
+        <div>
+          <div class="feat-num">03 / 06</div>
+          <div class="feat-label">Privacy</div>
+          <h2 class="feat-slide-title">Built for privacy.<br/>Not a feature — a rule.</h2>
+          <p class="feat-slide-sub">Eclipse blocks ads and trackers at the network level before they load. Incognito mode uses a fully separate Electron session — no history, no cookies, no cache, ever.</p>
+          <div class="feat-cards">
+            <div class="feat-card">
+              <div class="feat-card-icon">
+                <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="4.93" y1="4.93" x2="19.07" y2="19.07"/></svg>
+              </div>
+              <div class="feat-card-body">
+                <h4>Network-level adblock</h4>
+                <p>Domains blocked in Electron's main process — nothing loads at all.</p>
+              </div>
+            </div>
+            <div class="feat-card">
+              <div class="feat-card-icon">
+                <svg viewBox="0 0 24 24"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+              </div>
+              <div class="feat-card-body">
+                <h4>Real incognito</h4>
+                <p>Separate Electron session partition. Closed = gone. No exceptions.</p>
+              </div>
+            </div>
+            <div class="feat-card">
+              <div class="feat-card-icon">
+                <svg viewBox="0 0 24 24"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
+              </div>
+              <div class="feat-card-body">
+                <h4>Zero telemetry</h4>
+                <p>Eclipse sends nothing. No crash reports, no analytics, no pings.</p>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="feat-visual">
+          <div class="privacy-visual">
+            <div class="priv-orbit" style="inset:0;animation:spin 20s linear infinite">
+              <div class="priv-dot" style="background:var(--cyan);box-shadow:0 0 10px var(--cyan)"></div>
+            </div>
+            <div class="priv-orbit" style="inset:28px;animation:spin 14s linear infinite reverse">
+              <div class="priv-dot" style="background:var(--blue);box-shadow:0 0 10px var(--blue)"></div>
+            </div>
+            <div class="priv-orbit" style="inset:56px;animation:spin 9s linear infinite">
+              <div class="priv-dot" style="background:#a78bfa;box-shadow:0 0 10px #a78bfa"></div>
+            </div>
+            <div class="priv-center">
+              <svg viewBox="0 0 24 24" stroke-width="1.5"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div style="margin-top:48px;">
+        <button class="next-btn" onclick="nextSlide()">
+          Next: Extensions
+          <svg viewBox="0 0 24 24" stroke-width="2.5"><polyline points="9 18 15 12 9 6"/></svg>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <div class="slide-divider"></div>
+
+  <!-- ── SLIDE 4: EXTENSIONS ── -->
+  <div class="slide feature-slide" data-slide="4">
+    <div class="slide-inner">
+      <div class="feat-2col reverse">
+        <div>
+          <div class="feat-num">04 / 06</div>
+          <div class="feat-label">Extensions &amp; Mini-Apps</div>
+          <h2 class="feat-slide-title">Add only what<br/>you need.</h2>
+          <p class="feat-slide-sub">Eclipse extensions are sandboxed modules that open as floating windows, sidebar panels, or picture-in-picture mini-apps. Drag them anywhere. Dock them or let them float freely.</p>
+          <div class="feat-cards">
+            <div class="feat-card">
+              <div class="feat-card-icon">
+                <svg viewBox="0 0 24 24"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg>
+              </div>
+              <div class="feat-card-body">
+                <h4>Modular and sandboxed</h4>
+                <p>Each extension runs in isolation. Enable or disable per profile.</p>
+              </div>
+            </div>
+            <div class="feat-card">
+              <div class="feat-card-icon">
+                <svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
+              </div>
+              <div class="feat-card-body">
+                <h4>Floating mini-apps</h4>
+                <p>Resize and drag windows anywhere on your desktop — even outside the browser.</p>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="feat-visual">
+          <div class="ext-grid">
+            <div class="ext-tile">
+              <div class="ext-icon" style="background:rgba(92,224,216,0.1)">
+                <svg viewBox="0 0 24 24" style="stroke:var(--cyan)"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
+              </div>
+              <h5>Notes</h5>
+              <p>Quick text editor, always floating</p>
+            </div>
+            <div class="ext-tile">
+              <div class="ext-icon" style="background:rgba(122,184,245,0.1)">
+                <svg viewBox="0 0 24 24" style="stroke:var(--blue)"><polyline points="9 11 12 14 22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
+              </div>
+              <h5>Todo</h5>
+              <p>Task list per profile</p>
+            </div>
+            <div class="ext-tile">
+              <div class="ext-icon" style="background:rgba(167,139,250,0.1)">
+                <svg viewBox="0 0 24 24" style="stroke:#a78bfa"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
+              </div>
+              <h5>Translator</h5>
+              <p>Translate any text inline</p>
+            </div>
+            <div class="ext-tile">
+              <div class="ext-icon" style="background:rgba(251,191,36,0.1)">
+                <svg viewBox="0 0 24 24" style="stroke:#fbbf24"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/></svg>
+              </div>
+              <h5>Dark Reader</h5>
+              <p>Force dark mode on any page</p>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div style="margin-top:48px;">
+        <button class="next-btn" onclick="nextSlide()">
+          Next: Themes
+          <svg viewBox="0 0 24 24" stroke-width="2.5"><polyline points="9 18 15 12 9 6"/></svg>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <div class="slide-divider"></div>
+
+  <!-- ── SLIDE 5: THEMES ── -->
+  <div class="slide feature-slide" data-slide="5">
+    <div class="slide-inner">
+      <div class="feat-2col">
+        <div>
+          <div class="feat-num">05 / 06</div>
+          <div class="feat-label">Themes</div>
+          <h2 class="feat-slide-title">Make it<br/>look like you.</h2>
+          <p class="feat-slide-sub">20+ themes, live switching, and custom accent colors — all stored as simple JSON files. No restart, no lag. Change everything from the toolbar.</p>
+          <div class="feat-cards">
+            <div class="feat-card">
+              <div class="feat-card-icon">
+                <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 8v4l3 3"/></svg>
+              </div>
+              <div class="feat-card-body">
+                <h4>Live switching</h4>
+                <p>Themes apply instantly with no page reload or restart.</p>
+              </div>
+            </div>
+            <div class="feat-card">
+              <div class="feat-card-icon">
+                <svg viewBox="0 0 24 24"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
+              </div>
+              <div class="feat-card-body">
+                <h4>Custom accent colors</h4>
+                <p>Pick your own accent color — icon tints and highlights update automatically.</p>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="feat-visual">
+          <div class="themes-visual">
+            <div class="theme-row-vis">
+              <div class="t-swatch sel" style="background:linear-gradient(135deg,#080e14,#0d2233)"></div>
+              <div class="t-swatch" style="background:linear-gradient(135deg,#0f1117,#1a1f2e)"></div>
+              <div class="t-swatch" style="background:linear-gradient(135deg,#f5f5f0,#e8e8e0)"></div>
+              <div class="t-swatch" style="background:linear-gradient(135deg,#1a0a2e,#2d1b69)"></div>
+            </div>
+            <div class="theme-row-vis">
+              <div class="t-swatch" style="background:linear-gradient(135deg,#0a1628,#1a3a5c)"></div>
+              <div class="t-swatch" style="background:linear-gradient(135deg,#0a2818,#1a4a2e)"></div>
+              <div class="t-swatch" style="background:linear-gradient(135deg,#2a0a0a,#4a1a1a)"></div>
+              <div class="t-swatch" style="background:linear-gradient(135deg,#1a1a0a,#3a3a14)"></div>
+            </div>
+            <div class="theme-row-vis">
+              <div class="t-swatch" style="background:linear-gradient(135deg,#0a2a2a,#1a4a4a)"></div>
+              <div class="t-swatch" style="background:linear-gradient(135deg,#28142a,#4a2a4e)"></div>
+              <div class="t-swatch" style="background:linear-gradient(135deg,#141428,#282850)"></div>
+              <div class="t-swatch" style="background:linear-gradient(135deg,#2a2a2a,#1a1a1a)"></div>
+            </div>
+            <p style="font-size:12px;color:var(--muted);margin-top:12px;">Click any theme to preview</p>
+          </div>
+        </div>
+      </div>
+      <div style="margin-top:48px;">
+        <button class="next-btn" onclick="nextSlide()">
+          Next: Passwords
+          <svg viewBox="0 0 24 24" stroke-width="2.5"><polyline points="9 18 15 12 9 6"/></svg>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <div class="slide-divider"></div>
+
+  <!-- ── SLIDE 6: PASSWORD MANAGER ── -->
+  <div class="slide feature-slide" data-slide="6">
+    <div class="slide-inner">
+      <div class="feat-2col reverse">
+        <div>
+          <div class="feat-num">06 / 06</div>
+          <div class="feat-label">Password Manager</div>
+          <h2 class="feat-slide-title">Your passwords.<br/>Encrypted. Local.</h2>
+          <p class="feat-slide-sub">Eclipse includes a built-in AES-encrypted password vault protected by a master password. No cloud. No subscription. Per-profile isolation so your work logins never touch your personal ones.</p>
+          <div class="feat-cards">
+            <div class="feat-card">
+              <div class="feat-card-icon">
+                <svg viewBox="0 0 24 24"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+              </div>
+              <div class="feat-card-body">
+                <h4>AES encryption</h4>
+                <p>Your vault is encrypted with a master password only you know.</p>
+              </div>
+            </div>
+            <div class="feat-card">
+              <div class="feat-card-icon">
+                <svg viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+              </div>
+              <div class="feat-card-body">
+                <h4>Per-profile vaults</h4>
+                <p>Each profile has an entirely separate encrypted password store.</p>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="feat-visual">
+          <div class="pass-visual">
+            <div class="pass-header">
+              <svg viewBox="0 0 24 24" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+              <span>Password Vault — Work</span>
+            </div>
+            <div class="pass-item">
+              <span class="pass-site">github.com</span>
+              <span class="pass-dots">••••••••••</span>
+              <div class="pass-copy"><svg viewBox="0 0 24 24" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg></div>
+            </div>
+            <div class="pass-item">
+              <span class="pass-site">notion.so</span>
+              <span class="pass-dots">••••••••••</span>
+              <div class="pass-copy"><svg viewBox="0 0 24 24" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg></div>
+            </div>
+            <div class="pass-item">
+              <span class="pass-site">figma.com</span>
+              <span class="pass-dots">••••••••••</span>
+              <div class="pass-copy"><svg viewBox="0 0 24 24" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg></div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div style="margin-top:48px;">
+        <button class="next-btn" onclick="nextSlide()">
+          You're all set
+          <svg viewBox="0 0 24 24" stroke-width="2.5"><polyline points="9 18 15 12 9 6"/></svg>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <div class="slide-divider"></div>
+
+  <!-- ── SLIDE 7: FINAL ── -->
+  <div class="slide final-slide" data-slide="7">
+    <div class="slide-inner">
+      <div class="welcome-badge" style="margin-bottom:28px;">
+        <svg viewBox="0 0 24 24" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>
+        All done
+      </div>
+      <h2>You're ready<br/>to <span style="background:linear-gradient(135deg,#5ce0d8,#7ab8f5);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;">eclipse</span>.</h2>
+      <p>Everything is private, local, and ready to customize. Here's a quick recap of what you just learned:</p>
+      <div class="final-checklist">
+        <div class="chk-item">
+          <div class="chk-icon"><svg viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg></div>
+          Multiple isolated profiles for any context
+        </div>
+        <div class="chk-item">
+          <div class="chk-icon"><svg viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="3"/><path d="M3 9h18"/></svg></div>
+          Persistent tabs with real favicons
+        </div>
+        <div class="chk-item">
+          <div class="chk-icon"><svg viewBox="0 0 24 24"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg></div>
+          Adblock + real incognito + zero telemetry
+        </div>
+        <div class="chk-item">
+          <div class="chk-icon"><svg viewBox="0 0 24 24"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg></div>
+          Sandboxed extensions &amp; floating mini-apps
+        </div>
+        <div class="chk-item">
+          <div class="chk-icon"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 8v4l3 3"/></svg></div>
+          20+ live-switching themes
+        </div>
+        <div class="chk-item">
+          <div class="chk-icon"><svg viewBox="0 0 24 24"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg></div>
+          AES-encrypted local password vault
+        </div>
+      </div>
+      <a href__="#" class="launch-btn" onclick="this.textContent='Launching…';setTimeout(()=>window.close?.(),800)">
+        <svg viewBox="0 0 24 24" stroke-width="2.5"><polyline points="5 12 12 19 19 12"/></svg>
+        Launch Eclipse Browser
+      </a>
+    </div>
+  </div>
+
+</div>
+
+<!-- KEYBOARD HINT -->
+<div class="kbd-hint" id="kbdHint">
+  Use <kbd class="kbd">↓</kbd> <kbd class="kbd">↑</kbd> or scroll to navigate
+</div>
+
+<script>
+  // ── PARTICLE CANVAS ──
+  const canvas = document.getElementById('bg-canvas');
+  const ctx = canvas.getContext('2d');
+  let W, H, particles = [];
+
+  function resize() { W = canvas.width = window.innerWidth; H = canvas.height = window.innerHeight; }
+  resize();
+  window.addEventListener('resize', resize);
+
+  class Particle {
+    constructor() { this.reset(); }
+    reset() {
+      this.x = Math.random() * W;
+      this.y = Math.random() * H;
+      this.r = Math.random() * 1.4 + 0.3;
+      this.vx = (Math.random() - 0.5) * 0.28;
+      this.vy = (Math.random() - 0.5) * 0.28;
+      this.alpha = Math.random() * 0.45 + 0.08;
+      this.color = Math.random() > 0.5 ? '92,224,216' : '122,184,245';
+    }
+    update() {
+      this.x += this.vx; this.y += this.vy;
+      if (this.x < 0 || this.x > W || this.y < 0 || this.y > H) this.reset();
+    }
+    draw() {
+      ctx.beginPath();
+      ctx.arc(this.x, this.y, this.r, 0, Math.PI * 2);
+      ctx.fillStyle = `rgba(${this.color},${this.alpha})`;
+      ctx.fill();
+    }
+  }
+
+  for (let i = 0; i < 100; i++) particles.push(new Particle());
+
+  function drawLines() {
+    for (let i = 0; i < particles.length; i++) {
+      for (let j = i + 1; j < particles.length; j++) {
+        const dx = particles[i].x - particles[j].x;
+        const dy = particles[i].y - particles[j].y;
+        const d = Math.sqrt(dx*dx + dy*dy);
+        if (d < 90) {
+          ctx.beginPath();
+          ctx.moveTo(particles[i].x, particles[i].y);
+          ctx.lineTo(particles[j].x, particles[j].y);
+          ctx.strokeStyle = `rgba(92,224,216,${0.05*(1-d/90)})`;
+          ctx.lineWidth = 0.5;
+          ctx.stroke();
+        }
+      }
+    }
+  }
+
+  function animCanvas() {
+    ctx.clearRect(0, 0, W, H);
+    particles.forEach(p => { p.update(); p.draw(); });
+    drawLines();
+    requestAnimationFrame(animCanvas);
+  }
+  animCanvas();
+
+  // ── SLIDES LOGIC ──
+  const slides = document.querySelectorAll('.slide');
+  const totalSlides = slides.length;
+  let currentSlide = 0;
+  let scrollLock = false;
+
+  // Build nav dots
+  const navSteps = document.getElementById('navSteps');
+  slides.forEach((_, i) => {
+    const dot = document.createElement('div');
+    dot.className = 'step-dot';
+    dot.addEventListener('click', () => goToSlide(i));
+    navSteps.appendChild(dot);
+  });
+
+  function updateProgress() {
+    const pct = (currentSlide / (totalSlides - 1)) * 100;
+    document.getElementById('progressBar').style.width = pct + '%';
+  }
+
+  function updateDots() {
+    document.querySelectorAll('.step-dot').forEach((dot, i) => {
+      dot.classList.remove('active', 'done');
+      if (i === currentSlide) dot.classList.add('active');
+      else if (i < currentSlide) dot.classList.add('done');
+    });
+  }
+
+  function goToSlide(index) {
+    if (index < 0 || index >= totalSlides) return;
+    currentSlide = index;
+    slides[currentSlide].scrollIntoView({ behavior: 'smooth', block: 'center' });
+    updateDots();
+    updateProgress();
+  }
+
+  function nextSlide() { goToSlide(currentSlide + 1); }
+
+  // Intersection observer for reveal + current slide tracking
+  const io = new IntersectionObserver(entries => {
+    entries.forEach(e => {
+      if (e.isIntersecting) {
+        e.target.classList.add('visible');
+        const idx = parseInt(e.target.dataset.slide);
+        if (!isNaN(idx)) {
+          currentSlide = idx;
+          updateDots();
+          updateProgress();
+        }
+      }
+    });
+  }, { threshold: 0.45 });
+
+  slides.forEach(s => io.observe(s));
+
+  // Keyboard navigation
+  document.addEventListener('keydown', e => {
+    if (e.key === 'ArrowDown' || e.key === 'ArrowRight') { e.preventDefault(); nextSlide(); }
+    if (e.key === 'ArrowUp' || e.key === 'ArrowLeft') { e.preventDefault(); goToSlide(currentSlide - 1); }
+  });
+
+  // Show keyboard hint briefly
+  setTimeout(() => {
+    const hint = document.getElementById('kbdHint');
+    hint.classList.add('show');
+    setTimeout(() => hint.classList.remove('show'), 3500);
+  }, 1800);
+
+  // Theme swatch interactivity
+  document.querySelectorAll('.t-swatch').forEach(s => {
+    s.addEventListener('click', () => {
+      document.querySelectorAll('.t-swatch').forEach(x => x.classList.remove('sel'));
+      s.classList.add('sel');
+    });
+  });
+
+  // Init
+  updateDots();
+  updateProgress();
+</script>
+</body>
+</html>
